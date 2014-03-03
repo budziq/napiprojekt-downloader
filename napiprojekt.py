@@ -17,11 +17,12 @@ def WARN(s):
 def OK(s):
     print('\x1b[38;5;2m' + s + '\x1b[0m')
 
-MOVIE_EXTS = (".avi", ".mkv", ".mp4", ".wmv")
-SUB_EXTS = (".srt", ".sub", ".mpl")
 
 def find_movies(movie_dir):
     # Traverse the directory tree and select all movie files
+
+    MOVIE_EXTS = (".avi", ".mkv", ".mp4", ".wmv")
+    SUB_EXTS = (".srt", ".sub", ".mpl")
     movies = []
     subtitles = set()
 
@@ -33,7 +34,7 @@ def find_movies(movie_dir):
             if ext.lower() in MOVIE_EXTS:
                 movies.append(os.path.join(root, f))
 
-    return filter(lambda m : os.path.splitext(m)[0] not in subtitles, movies)
+    return filter(lambda m: os.path.splitext(m)[0] not in subtitles, movies)
 
 
 def search_subtitles(moviefiles, lang_id="en"):
@@ -45,7 +46,7 @@ def search_subtitles(moviefiles, lang_id="en"):
 
     for movie in moviefiles:
 
-        print("Found movie: " + movie, end=" ")
+        print(movie, end=" ")
         file_md5, file_hash = hashFile(movie)
         query = template % (lang_id.upper(), file_md5, file_hash)
 
@@ -69,10 +70,11 @@ def hashFile(name):
 
     hash_sample_size = 10485760
     # thanks to gim,krzynio,dosiu,hash 2oo8 for this function
+
     def secondaryHash(data):
-        idx = [ 0xe, 0x3,  0x6, 0x8, 0x2 ]
-        mul = [   2,   2,    5,   4,   3 ]
-        add = [   0, 0xd, 0x10, 0xb, 0x5 ]
+        idx = [0xe, 0x3,  0x6, 0x8, 0x2]
+        mul = [2,   2,    5,   4,   3]
+        add = [0,   0xd, 0x10, 0xb, 0x5]
 
         b = []
         for i in range(len(idx)):
@@ -82,7 +84,7 @@ def hashFile(name):
 
             t = a + int(data[i], 16)
             v = int(data[t:t+2], 16)
-            b.append( ("%x" % (v*m))[-1] )
+            b.append(("%x" % (v*m))[-1])
 
         return ''.join(b)
 
@@ -98,7 +100,7 @@ def hashFile(name):
         return (d, secondaryHash(d))
     except:
         print ("Error")
-        return ("","")
+        return ("", "")
 
 
 if __name__ == '__main__':
