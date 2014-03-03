@@ -10,6 +10,13 @@ except ImportError:
     from urllib import urlopen
 
 
+def WARN(s):
+    print('\x1b[38;5;1m' + s + '\x1b[0m')
+
+
+def OK(s):
+    print('\x1b[38;5;2m' + s + '\x1b[0m')
+
 MOVIE_EXTS = (".avi", ".mkv", ".mp4", ".wmv")
 SUB_EXTS = (".srt", ".sub", ".mpl")
 
@@ -44,9 +51,9 @@ def search_subtitles(moviefiles, lang_id="en"):
 
         url = urlopen(query).read()
         if not url or url == "NPc0" or len(url) < 10:
-            print("[ERR]")
+            WARN("[ERR]")
             continue
-        print("[OK]")
+        OK("[OK]")
 
         basename = os.path.splitext(movie)[0]
         zname = basename + ".srt"
