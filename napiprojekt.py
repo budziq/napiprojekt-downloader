@@ -23,6 +23,7 @@ def find_movies(movie_dir):
 
     MOVIE_EXTS = (".avi", ".mkv", ".mp4", ".wmv")
     SUB_EXTS = (".srt", ".sub", ".mpl")
+    MIN_FILE_SIZE = 50*2**20  # 50MB
     movies = []
     subtitles = set()
 
@@ -34,7 +35,8 @@ def find_movies(movie_dir):
             if ext.lower() in MOVIE_EXTS:
                 movies.append(os.path.join(root, f))
 
-    return filter(lambda m: os.path.splitext(m)[0] not in subtitles, movies)
+    return filter(lambda m: os.stat(m).st_size > MIN_FILE_SIZE,
+                  filter(lambda m: os.path.splitext(m)[0] not in subtitles, movies))
 
 
 def search_subtitles(moviefiles, lang_id="en"):
