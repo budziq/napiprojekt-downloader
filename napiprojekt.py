@@ -11,11 +11,11 @@ except ImportError:
 
 
 def WARN(s):
-    print('\x1b[38;5;1m' + s + '\x1b[0m')
+    return '\x1b[38;5;1m{0}\x1b[0m'.format(s)
 
 
 def OK(s):
-    print('\x1b[38;5;2m' + s + '\x1b[0m')
+    return '\x1b[38;5;2m{0}\x1b[0m'.format(s)
 
 
 def find_movies(movie_dir):
@@ -43,27 +43,33 @@ def search_subtitles(moviefiles, lang_id="en"):
     '''Search OpenSubtitles for matching subtitles'''
     template = "http://napiprojekt.pl/unit_napisy/dl.php?l=%s&f=%s&t=%s&v=dreambox&kolejka=false&nick=&pass=&napios=Linux"
 
-    print("NapiProjekt.pl Subtitle Downloader".center(78))
-    print("===================================".center(78))
+    if not moviefiles:
+        return
+    not_found = []
+    i = 0
+    total = len(moviefiles)
+
+    print('{:=^78}\n'.format(lang_id.upper()))
 
     for movie in moviefiles:
-
-        print(movie, end=" ")
+        i += 1
+        info_str = OK("[{0}/{1}] ".format(i, total)) + os.path.basename(movie)
         file_md5, file_hash = hashFile(movie)
         query = template % (lang_id.upper(), file_md5, file_hash)
 
         url = urlopen(query).read()
         if not url or url == "NPc0" or len(url) < 10:
-            WARN("[ERR]")
+            print('{0} {1:{2}}'.format(info_str, WARN("[ERR]"), 120 - len(info_str)))
+            not_found.append(movie)
             continue
-        OK("[OK]")
+        print('{0} {1:>{2}}'.format(info_str, OK("[OK]"), 120 - len(info_str)))
 
         basename = os.path.splitext(movie)[0]
         zname = basename + ".srt"
         file = open(zname, "wb")
         file.write(url)
         file.close()
-
+    return not_found
 
 def hashFile(name):
     '''Calculates the hash value of a movie.
@@ -106,11 +112,13 @@ def hashFile(name):
 
 
 if __name__ == '__main__':
-    import os
     cwd = os.getcwd()
     if len(sys.argv) > 1:
         cwd = sys.argv[1]
+
+    print("NapiProjekt.pl Subtitle Downloader".center(78))
     # in order to download non english subtitles add second argument
     # second language argument such as 'fr' or 'po'
     file_list = find_movies(cwd)
-    search_subtitles(file_list, 'pl')
+    not_found = search_subtitles(file_list, 'pl')
+    search_subtitles(not_found, 'en')
