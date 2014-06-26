@@ -5,9 +5,15 @@ import os
 import hashlib
 
 try:
-    from urllib.request import urlopen
+    import eventlet
+    from eventlet.green.urllib import urlopen
+    HAS_EVENTLET = True
 except ImportError:
-    from urllib import urlopen
+    HAS_EVENTLET = False
+    try:
+        from urllib.request import urlopen
+    except ImportError:
+        from urllib import urlopen
 
 
 def WARN(s):
@@ -36,12 +42,32 @@ def find_movies(movie_dir):
                 movies.append(os.path.join(root, f))
 
     return filter(lambda m: os.stat(m).st_size > MIN_FILE_SIZE,
-                  filter(lambda m: os.path.splitext(m)[0] not in subtitles, movies))
+                  filter(lambda m: os.path.splitext(m)[0]
+                         not in subtitles, movies))
+
+
+def download_sub(movie, lang_id, not_found, index, total):
+    template = "http://napiprojekt.pl/unit_napisy/dl.php?l=%s&f=%s&t=%s&v=dreambox&kolejka=false&nick=&pass=&napios=Linux"
+    info_str = OK("[{0}/{1}] ".format(index, total)) + os.path.basename(movie)
+    file_md5, file_hash = hashFile(movie)
+    query = template % (lang_id.upper(), file_md5, file_hash)
+
+    url = urlopen(query).read()
+    if not url or url == "NPc0" or len(url) < 10:
+        print('{0} {1:{2}}'.format(info_str, WARN("[ERR]"), 120 - len(info_str)))
+        not_found.append(movie)
+        return
+    print('{0} {1:>{2}}'.format(info_str, OK("[OK]"), 120 - len(info_str)))
+
+    basename = os.path.splitext(movie)[0]
+    zname = basename + ".srt"
+    file = open(zname, "wb")
+    file.write(url)
+    file.close()
 
 
 def search_subtitles(moviefiles, lang_id="en"):
     '''Search OpenSubtitles for matching subtitles'''
-    template = "http://napiprojekt.pl/unit_napisy/dl.php?l=%s&f=%s&t=%s&v=dreambox&kolejka=false&nick=&pass=&napios=Linux"
 
     if not moviefiles:
         return
@@ -50,26 +76,19 @@ def search_subtitles(moviefiles, lang_id="en"):
     total = len(moviefiles)
 
     print('{:=^78}\n'.format(lang_id.upper()))
-
-    for movie in moviefiles:
-        i += 1
-        info_str = OK("[{0}/{1}] ".format(i, total)) + os.path.basename(movie)
-        file_md5, file_hash = hashFile(movie)
-        query = template % (lang_id.upper(), file_md5, file_hash)
-
-        url = urlopen(query).read()
-        if not url or url == "NPc0" or len(url) < 10:
-            print('{0} {1:{2}}'.format(info_str, WARN("[ERR]"), 120 - len(info_str)))
-            not_found.append(movie)
-            continue
-        print('{0} {1:>{2}}'.format(info_str, OK("[OK]"), 120 - len(info_str)))
-
-        basename = os.path.splitext(movie)[0]
-        zname = basename + ".srt"
-        file = open(zname, "wb")
-        file.write(url)
-        file.close()
+    if not HAS_EVENTLET:
+        for movie in moviefiles:
+            i += 1
+            download_sub(movie, lang_id, not_found, i, total)
+    else:
+        pool = eventlet.GreenPool()
+        with eventlet.Timeout(5, False):
+            for movie in moviefiles:
+                i += 1
+                pool.spawn(download_sub, movie, lang_id, not_found, i, total)
+        pool.waitall()
     return not_found
+
 
 def hashFile(name):
     '''Calculates the hash value of a movie.
